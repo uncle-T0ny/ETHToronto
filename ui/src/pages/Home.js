@@ -19,7 +19,7 @@ export default function Home() {
           <h2 className="welcome" style={{ margin: "7rem 1rem 1rem 0" }}>
             Welcome to Mel's
             <br />
-            Metamask
+            Meta
           </h2>
           <p
             style={{
