@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
+import Button from "react-bootstrap/Button";
 import "./Header.css";
 import {walletAPI} from "../WalletApi";
 
@@ -32,19 +33,14 @@ function Header() {
                 Upload Your Volunteering Organization
               </NavLink>
             </li>
-            <li className="nav-item">
-              <button onClick={handleClick} className="nav-links" onClick={handleClick}>
-                Upload Your Volunteering Organization
-              </button>
-            </li>
           </ul>
           <div className="nav-icon" onClick={handleClick}>
             <i className={click ? "fas fa-times" : "fas fa-bars"} />
           </div>
 
-          <button onClick={handleLogin}>
-            {walletAPI.isSignedIn()? "Logout" : "Near Login"}
-          </button>
+          <Button variant="light" onClick={handleLogin}>
+            {walletAPI.isSignedIn() ? "Logout" : "Near Login"}
+          </Button>
         </div>
       </nav>
     </div>
