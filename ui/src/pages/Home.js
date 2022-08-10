@@ -1,5 +1,6 @@
-import React from "react";
+import React, {useRef} from "react";
 import "./Home.css";
+import Button from "react-bootstrap/Button";
 import Card from "../components/Card";
 import Footer from "../components/Footer";
 import Logo from "../assets/logo.png";
@@ -10,6 +11,10 @@ import Wonders from "../assets/wonders.png";
 import Labs from "../assets/labs.png";
 
 export default function Home() {
+  const ref = useRef(null);
+  const handleClick = () => {
+    ref.current?.scrollIntoView({ behavior: "smooth" });
+  };
   return (
     <div>
       <div
@@ -38,9 +43,9 @@ export default function Home() {
             technology. Donors can pay using USN, and volunteering organizations
             are given reputability scores.
           </p>
-          <button variant="outline-primary" className="action-button">
+          <Button variant="outline-primary" className="action-button" onClick={handleClick}>
             Scroll to view Organizations
-          </button>
+          </Button>
         </div>
         <div>
           <img
@@ -57,15 +62,17 @@ export default function Home() {
           alignItems: "center",
         }}
       >
-        <h2 className="everybody">Everybody has a story</h2>
+        <h2 className="everybody" ref={ref}>
+          Everybody has a story
+        </h2>
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr",
             gridTemplateRows: "auto",
             alignItems: "center",
-            columnGap: '50px',
-            rowGap: '50px'
+            columnGap: "50px",
+            rowGap: "50px",
           }}
         >
           {" "}
