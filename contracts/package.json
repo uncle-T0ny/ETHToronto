@@ -6,7 +6,8 @@
   "scripts": {
     "build": "yarn build:contract",
     "build:contract": "near-sdk-js build src/main.ts build/main.wasm",
-    "deploy": "yarn build:contract && near dev-deploy build/main.wasm --initFunction init --initArgs '{\"deposit_token_id\":\"usdn.testnet\"}'",
+    "deploy": "yarn build:contract && near dev-deploy build/main.wasm",
+    "deploy:new": "yarn build:contract && near dev-deploy build/main.wasm --initFunction init --initArgs '{\"deposit_token_id\":\"usdn.testnet\"}'",
     "start": "yarn deploy && env-cmd -f ./neardev/dev-account.env",
     "dev": "yarn deploy && nodemon --watch src -e ts --exec \"yarn start\""
   },

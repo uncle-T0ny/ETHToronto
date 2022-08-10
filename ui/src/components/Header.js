@@ -9,10 +9,16 @@ function Header() {
   const [isLoggedIn, setLogin] = useState(false);
   const handleClick = () => setClick(!click);
   const handleLogin = () => {
-    walletAPI.requestSignIn().then(r => {
-      setLogin(true);
-      console.log("LogIn response", r);
-    })
+    if (walletAPI.isSignedIn()) {
+      walletAPI.signOut();
+      window.location.reload();
+    } else {
+      walletAPI.requestSignIn().then(r => {
+        setLogin(true);
+        console.log("LogIn response", r);
+      })
+    }
+
   };
   return (
     <div>
@@ -38,7 +44,7 @@ function Header() {
             <i className={click ? "fas fa-times" : "fas fa-bars"} />
           </div>
 
-          <Button variant="light" onClick={handleLogin}>
+          <Button style={{marginRight: '20px'}} variant="light" onClick={handleLogin}>
             {walletAPI.isSignedIn() ? "Logout" : "Near Login"}
           </Button>
         </div>

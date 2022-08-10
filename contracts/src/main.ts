@@ -1,15 +1,5 @@
 import {assert, call, near, NearBindgen, NearContract, UnorderedMap, view} from 'near-sdk-js'
 
-/*
-smart contract features:
-- create a volunteer group with the information √
-- receive usn deposit to some volunteer’s proposal √
-- send the funds and allocate voting points between the users based on their deposits √
-- allow increasing or decrease volunteer’s group reputation based on voting points √
-- allow to withdraw the funds (usn) √
-- create a proposal: required usn amount, group id √
- */
-
 @NearBindgen
 class MelanieCore extends NearContract {
   groups: UnorderedMap;
@@ -36,14 +26,16 @@ class MelanieCore extends NearContract {
                description,
                logoUrl
              }
-           }: { groupUuid: string, group: Pick<VolunteerGroup, 'title' | 'description' | 'logoUrl'> }) {
+           }: { groupUuid: string, group: Pick<IVolunteerGroup, 'title' | 'description' | 'logoUrl'> }) {
     assert(this.groups.get(groupUuid) !== undefined, "Group already exists");
 
     const group = new VolunteerGroup(
       groupUuid,
-      title,
-      description,
-      logoUrl
+      {
+        title,
+        description,
+        logoUrl
+      }
     );
     this.groups.set(groupUuid, group);
 
@@ -53,7 +45,7 @@ class MelanieCore extends NearContract {
 
   @view
   getGroups() {
-    return this.groups.toArray().map(([key, group]: [string, VolunteerProposal]) => ({
+    return this.groups.toArray().map(([key, group]: [string, IVolunteerGroup]) => ({
       uuid: key,
       ...group
     }));
@@ -61,45 +53,49 @@ class MelanieCore extends NearContract {
 
   @view
   getProposals() {
-    near.log(this.proposals.toArray());
-    return [];
-    // return this.proposals.toArray().map(([key, proposal]: [string, VolunteerProposal]) => {
-    //   const currentAmount = Object.values(proposal.amounts)
-    //     .map((a: string) => BigInt(a))
-    //     .reduce((acc, cur) => acc + cur, BigInt(0)).toString();
-    //   return {
-    //     uuid: key,
-    //     currentAmount,
-    //     ...proposal
-    //   };
-    // });
+    return this.proposals.toArray().map(([uuid, proposal]: [string, IVolunteerProposal]) => {
+      const proposalClass = new VolunteerProposal(uuid, {...proposal});
+      return {
+        uuid,
+        ...proposalClass,
+        currentAmount: proposalClass.getCurrentAmount().toString(),
+      };
+    });
   }
 
   @call
   voteGroupUp(uuid: string) {
-    const group = this.groups.get(uuid) as VolunteerGroup;
+    const group = this.groups.get(uuid) as IVolunteerGroup;
     assert(!!group, "Group does not exist");
-    group.voteUp(near.predecessorAccountId());
-    this.groups.set(uuid, group);
+
+    const groupClass = new VolunteerGroup(uuid, {...group});
+
+    groupClass.voteUp(near.predecessorAccountId());
+    this.groups.set(uuid, groupClass);
   }
 
   @call
   voteGroupDown(uuid: string) {
-    const group = this.groups.get(uuid) as VolunteerGroup;
+    const group = this.groups.get(uuid) as IVolunteerGroup;
     assert(!!group, "Group does not exist");
-    group.voteDown(near.predecessorAccountId());
-    this.groups.set(uuid, group);
+
+    const groupClass = new VolunteerGroup(uuid, {...group});
+
+    groupClass.voteDown(near.predecessorAccountId());
+    this.groups.set(uuid, groupClass);
   }
 
   @call
-  addProposal({uuid, proposal : {
-    groupUuid,
-    requiredAmount,
-    title,
-    description,
-    imageUrls
-  }} : { uuid: string, proposal: Pick<VolunteerProposal, 'requiredAmount' | 'groupUuid' | 'title' | 'description' | 'imageUrls'>}) {
-    const group = this.groups.get(groupUuid) as VolunteerGroup;
+  addProposal({
+                uuid, proposal: {
+      groupUuid,
+      requiredAmount,
+      title,
+      description,
+      imageUrls
+    }
+              }: { uuid: string, proposal: Pick<VolunteerProposal, 'requiredAmount' | 'groupUuid' | 'title' | 'description' | 'imageUrls'> }) {
+    const group = this.groups.get(groupUuid) as IVolunteerGroup;
 
     // Check if group exists
     assert(!!group, `Group with id ${groupUuid} does not exist`);
@@ -112,11 +108,13 @@ class MelanieCore extends NearContract {
 
     this.proposals.set(uuid, new VolunteerProposal(
       uuid,
-      groupUuid,
-      requiredAmount,
-      title,
-      description,
-      imageUrls
+      {
+        groupUuid,
+        requiredAmount,
+        title,
+        description,
+        imageUrls
+      }
     ));
 
     near.log(`Proposal ${title} added`)
@@ -126,37 +124,42 @@ class MelanieCore extends NearContract {
   ft_on_transfer({sender_id, amount, msg}) {
     near.log(`Transfer from ${sender_id} of ${amount} ${near.predecessorAccountId()}, msg: ${msg}`);
     const proposalUuid: string = JSON.parse(msg).proposal_uuid;
-    const proposal = this.proposals.get(proposalUuid) as VolunteerProposal;
-    const group = this.groups.get(proposal.groupUuid) as VolunteerGroup;
+    const proposal = this.proposals.get(proposalUuid) as IVolunteerProposal;
+    const group = this.groups.get(proposal.groupUuid) as IVolunteerGroup;
 
     // Check that token is deposit token
     assert(this.depositTokenId === near.predecessorAccountId(), "Token is not supported to deposit");
 
     // Check if proposal exists
     assert(!!proposal, "Proposal does not exist");
+    const proposalClass = new VolunteerProposal(proposalUuid, {...proposal});
 
     // Check if group exists
     assert(!!group, "Group does not exist");
+    const groupClass = new VolunteerGroup(proposal.groupUuid, {...group});
 
     // Check if proposal is open
     assert(proposal.status === "open", "Proposal is not open");
 
     // Fund amount
-    proposal.fund(sender_id, amount);
+    proposalClass.fund(sender_id, amount);
 
     // Check if proposal has required amount of funds
-    if (proposal.hasRequiredAmount()) {
+    if (proposalClass.hasRequiredAmount()) {
       // Accept current proposal
-      proposal.accept();
+      proposalClass.accept();
 
       // Save proposal changes
-      this.proposals.set(proposalUuid, proposal);
+      this.proposals.set(proposalUuid, proposalClass);
 
       // Allocate rate points
-      group.allocatePoints(proposal.getAllAmounts());
+      groupClass.allocatePoints(proposalClass.getAllAmounts());
 
       // Save group changes
-      this.groups.set(proposal.groupUuid, group);
+      this.groups.set(proposal.groupUuid, groupClass);
+    } else {
+      // Save proposal changes
+      this.proposals.set(proposalUuid, proposalClass);
     }
 
     return '0';
@@ -164,8 +167,8 @@ class MelanieCore extends NearContract {
 
   @call
   withdraw_proposal_funds(uuid: string) {
-    const proposal = this.proposals.get(uuid) as VolunteerProposal;
-    const group = this.groups.get(proposal.groupUuid) as VolunteerGroup;
+    const proposal = this.proposals.get(uuid) as IVolunteerProposal;
+    const group = this.groups.get(proposal.groupUuid) as IVolunteerGroup;
 
     // Check if proposal exists
     assert(!!proposal, "Proposal does not exist");
@@ -202,7 +205,16 @@ class MelanieCore extends NearContract {
   }
 }
 
-class VolunteerGroup {
+interface IVolunteerGroup {
+  title: string;
+  description: string;
+  logoUrl: string;
+  scores: string;
+  owner: string;
+  ratePoints: UnorderedMap;
+}
+
+class VolunteerGroup implements IVolunteerGroup {
   title: string;
   description: string;
   logoUrl: string;
@@ -210,13 +222,24 @@ class VolunteerGroup {
   owner: string;
   ratePoints: UnorderedMap;
 
-  constructor(uuid: string, title: string, description: string, logoUrl: string) {
+  constructor(uuid: string, {
+    title,
+    description,
+    logoUrl,
+    scores = "0",
+    owner = near.signerAccountId(),
+    ratePoints
+  }: { title: string, description: string, logoUrl: string, scores?: string, owner?: string, ratePoints?: UnorderedMap }) {
     this.title = title;
     this.description = description;
     this.logoUrl = logoUrl;
-    this.scores = "0";
-    this.owner = near.signerAccountId();
-    this.ratePoints = new UnorderedMap(`${uuid}_rate_points`);
+    this.scores = scores;
+    this.owner = owner;
+    if (ratePoints) {
+      this.ratePoints = UnorderedMap.deserialize(ratePoints);
+    } else {
+      this.ratePoints = new UnorderedMap(`${uuid}_rate_points`);
+    }
   }
 
   voteUp(accountId: string) {
@@ -244,7 +267,18 @@ class VolunteerGroup {
 
 }
 
-class VolunteerProposal {
+interface IVolunteerProposal {
+  groupUuid: string;
+  requiredAmount: string;
+  title: string;
+  description: string;
+  imageUrls: string[];
+  status: 'open' | 'accepted' | 'rejected';
+  balance: string;
+  amounts: UnorderedMap;
+}
+
+class VolunteerProposal implements IVolunteerProposal {
   groupUuid: string;
   requiredAmount: string;
   title: string;
@@ -254,14 +288,29 @@ class VolunteerProposal {
   balance: string;
   amounts: UnorderedMap;
 
-  constructor(uuid: string, groupUuid: string, requiredAmount: string, title: string, description: string, imageUrls: string[]) {
+  constructor(uuid: string, {
+                groupUuid,
+                requiredAmount,
+                title,
+                description,
+                imageUrls,
+                status = "open",
+                balance = "0",
+                amounts
+              }: { groupUuid: string, requiredAmount: string, title: string, description: string, imageUrls: string[], status?: 'open' | 'accepted' | 'rejected', balance?: string, amounts?: UnorderedMap }
+  ) {
     this.groupUuid = groupUuid;
+    this.requiredAmount = requiredAmount;
     this.title = title;
     this.description = description;
     this.imageUrls = imageUrls;
-    this.status = "open";
-    this.amounts = new UnorderedMap(`${uuid}_amounts`);
-    this.requiredAmount = requiredAmount;
+    this.status = status;
+    this.balance = balance;
+    if (amounts) {
+      this.amounts = UnorderedMap.deserialize(amounts);
+    } else {
+      this.amounts = new UnorderedMap(`${uuid}_amounts`);
+    }
   }
 
   getAllAmounts(): { [key: string]: string } {
@@ -292,7 +341,7 @@ class VolunteerProposal {
     this.balance = (BigInt(this.balance) + BigInt(amount)).toString();
   }
 
-  // history: ProposalHistory[];
+// history: ProposalHistory[];
 }
 
 //

@@ -5,6 +5,7 @@ import Card from "../components/Card";
 import Footer from "../components/Footer";
 import Logo from "../assets/logo.png";
 import Detroit from "../assets/detroit.png";
+import EducationWorker from "../assets/education_worker.jpg";
 import Womans from "../assets/womans.png";
 import Maths from "../assets/math.png";
 import Wonders from "../assets/wonders.png";
@@ -78,33 +79,44 @@ export default function Home() {
           {" "}
           <Card
             image={Detroit}
+            image1={EducationWorker}
             title="Detroit Blockchain Center"
             description="Promote the education, adoption, and growth of blockchain technology throughout Metro-Detroit."
-            goal="10000"
+            goal="1000"
+            rateScore="30"
+            isActive={true}
           />
           <Card
             image={Womans}
+            image1={Womans}
             title="Women's Business Association"
             description="A non-profit organization devoted to helping women start, lead, and grow businesses. We provide up to 25 000 USN per team in grants."
             goal="125000"
+            rateScore="16"
           />
           <Card
             image={Maths}
-            title="Math 4 Kids"
+            image1={Maths}
+            title="Math 4 Kids Toronto Team"
             description="Providing students grades K-12 with free Math educational content such as worksheets, tutoring, and videos."
-            goal="45000"
+            goal="4500"
+            rateScore="-20"
           />
           <Card
             image={Wonders}
+            image1={Wonders}
             title="Wonders Daycare"
             description="Providing low income families with daycare, child support, and youth education for as little as $100 a month in Toronto."
-            goal="85000"
+            goal="8500"
+            rateScore="30"
           />
           <Card
             image={Labs}
+            image1={Labs}
             title="Labs Science"
             description="Providing grades 9-12 with chemistry, physics, and biology lessons taught by professors from MIT, Stanford, UofT, and Cornell."
-            goal="125000"
+            goal="12500"
+            rateScore="2"
           />
         </div>
       </div>
